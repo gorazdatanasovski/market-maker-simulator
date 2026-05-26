@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LOB Simulator</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
+</head>
+<body>
+    <div class="terminal-container">
+        <header class="terminal-header">
+            <div class="header-left">
+                <h1>Market Maker Simulator&trade;</h1>
+                <span class="badge-synth">$SYNTH</span>
+            </div>
+            <div class="header-right">
+                <div class="stats">
+                    <div class="stat-box"><span class="stat-label">Spread capture</span><span id="spread-pnl" class="stat-val">$0.00</span></div>
+                    <div class="stat-box"><span class="stat-label">Adv. selection</span><span id="adv-select" class="stat-val">$0.00</span></div>
+                    <div class="stat-box"><span class="stat-label">Inventory</span><span id="inventory" class="stat-val">0</span></div>
+                    <div class="stat-box"><span class="stat-label">Avg px</span><span id="avg-px" class="stat-val">0.00</span></div>
+                </div>
+                <div class="risk-controls">
+                    <button id="btn-flatten" class="btn btn-flatten">Flatten</button>
+                    <button id="btn-kill" class="btn btn-pull">Pull Quotes</button>
+                </div>
+            </div>
+        </header>
+
+        <div class="telemetry-bar">
+            <div class="telemetry-item"><span class="telem-label">OFI</span><span id="ofi-val" class="telem-val">0.00</span></div>
+            <div class="telemetry-item"><span class="telem-label">1-min σ</span><span id="vol-val" class="telem-val">0.00 bps</span></div>
+            <div class="telemetry-item"><span class="telem-label">Hurst</span><span id="hurst-val" class="telem-val">0.50</span><span id="regime-dot" class="regime-dot"></span></div>
+            <div class="telemetry-item"><span class="telem-label">Kyle's λ</span><span id="lambda-val" class="telem-val">0.000</span></div>
+            <div class="telemetry-item"><span class="telem-label">VPIN</span><span id="vpin-val" class="telem-val">0.30</span><span id="vpin-alert" class="vpin-alert"></span></div>
+        </div>
+
+        <main class="terminal-main">
+            <div id="tape-container">
+                <div class="tape-header">
+                    <div>Time</div>
+                    <div>Size</div>
+                    <div>Price</div>
+                </div>
+                <div id="tape-feed"></div>
+            </div>
+
+            <div id="lob-container">
+                <div class="lob-header">
+                    <div>Bid size</div>
+                    <div>Price</div>
+                    <div>Ask size</div>
+                </div>
+                <div id="lob-grid"></div>
+            </div>
+
+            <div class="controls-container">
+                <div class="algo-dashboard">
+                    <h3>Avellaneda-Stoikov Quoting</h3>
+                    <div class="input-group">
+                        <label>Risk aversion (γ)</label>
+                        <input type="number" id="algo-gamma" value="0.1" step="0.01" min="0.01">
+                    </div>
+                    <div class="input-group">
+                        <label>Arrival rate (k)</label>
+                        <input type="number" id="algo-k" value="5.0" step="0.1" min="0.1">
+                    </div>
+                    <div class="input-group">
+                        <label>Base clip size</label>
+                        <input type="number" id="algo-clip" value="100" min="1">
+                    </div>
+                    <div class="derived-card">
+                        <div class="derived-item"><span class="derived-label">Reservation price (r)</span><span id="stat-r" class="derived-value">—</span></div>
+                        <div class="derived-item"><span class="derived-label">Optimal spread (δ)</span><span id="stat-delta" class="derived-value">—</span></div>
+                        <div class="derived-item"><span class="derived-label">Target bid</span><span id="stat-bid" class="derived-value">—</span></div>
+                        <div class="derived-item"><span class="derived-label">Target ask</span><span id="stat-ask" class="derived-value">—</span></div>
+                        <div class="derived-item"><span class="derived-label">Live clip</span><span id="stat-clip" class="derived-value">—</span></div>
+                    </div>
+                    <button id="btn-master" class="btn btn-master active">
+                        <span class="indicator"></span> System active
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <div class="dashboard-bottom">
+            <div class="chart-panel">
+                <span class="chart-title">PnL decomposition (60s)</span>
+                <canvas id="chart-pnl" width="280" height="90"></canvas>
+                <div class="chart-legend">
+                    <span class="legend-item"><span class="legend-dot dot-accent"></span>Spread</span>
+                    <span class="legend-item"><span class="legend-dot dot-loss"></span>Adverse</span>
+                </div>
+            </div>
+            <div class="chart-panel">
+                <span class="chart-title">Inventory × r(s,t) (60s)</span>
+                <canvas id="chart-inv" width="280" height="90"></canvas>
+                <div class="chart-legend">
+                    <span class="legend-item"><span class="legend-dot dot-accent"></span>Inventory</span>
+                    <span class="legend-item"><span class="legend-dot dot-secondary"></span>r(s,t)</span>
+                </div>
+            </div>
+            <div class="chart-panel chart-panel-sm">
+                <span class="chart-title">Quote-to-fill ratio (60s)</span>
+                <canvas id="chart-qtf" width="180" height="90"></canvas>
+            </div>
+            <div class="chart-panel chart-panel-log">
+                <span class="chart-title">Recent fills</span>
+                <table class="fill-table">
+                    <thead><tr><th>Time</th><th>Side</th><th>Sz</th><th>Px</th><th></th></tr></thead>
+                    <tbody id="fill-log-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script src="js/app.js"></script>
+</body>
+</html>
